@@ -2,31 +2,34 @@
 # Conditional build:
 %bcond_without	tests	# unit tests
 
-%define		module	sse_starlette
 Summary:	SSE plugin for Starlette
 Summary(pl.UTF-8):	Wtyczka SSE dla Starlette
 Name:		python3-sse-starlette
-Version:	3.3.2
+Version:	3.7.1
 Release:	1
 License:	BSD
 Group:		Libraries/Python
-#Source0Download: https://pypi.org/simple/sse-starlette/
-Source0:	https://files.pythonhosted.org/packages/source/s/sse-starlette/%{module}-%{version}.tar.gz
-# Source0-md5:	0cf7ee12666fd79aaeaee1ecfed25cef
+# PyPI sdist lacks tests/conftest.py and tests/anyio_compat.py
+#Source0Download: https://github.com/sysid/sse-starlette/tags
+Source0:	https://github.com/sysid/sse-starlette/archive/v%{version}/sse-starlette-%{version}.tar.gz
+# Source0-md5:	7f86ffd26859ce16e8512b8198051175
 URL:		https://github.com/sysid/sse-starlette
 BuildRequires:	python3-build
 BuildRequires:	python3-installer
-BuildRequires:	python3-modules >= 1:3.10
+BuildRequires:	python3-modules >= 1:3.11
 BuildRequires:	python3-setuptools
 %if %{with tests}
 BuildRequires:	python3-anyio >= 4.7.0
-BuildRequires:	python3-pytest
+BuildRequires:	python3-asgi-lifespan >= 2.1.0
+BuildRequires:	python3-httpx2 >= 2.12.0
+BuildRequires:	python3-pytest >= 8.3.4
+BuildRequires:	python3-pytest-asyncio >= 0.25.0
 BuildRequires:	python3-starlette >= 0.49.1
+BuildRequires:	python3-uvicorn >= 0.34.0
 %endif
 BuildRequires:	rpm-pythonprov
 BuildRequires:	rpmbuild(macros) >= 2.044
-Requires:	python3-anyio >= 4.7.0
-Requires:	python3-starlette >= 0.49.1
+Requires:	python3-modules >= 1:3.11
 BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
@@ -37,14 +40,18 @@ Server-Sent Events (SSE) plugin for Starlette.
 Wtyczka Server-Sent Events (SSE) dla Starlette.
 
 %prep
-%setup -q -n %{module}-%{version}
+%setup -q -n sse-starlette-%{version}
 
 %build
 %py3_build_pyproject
 
 %if %{with tests}
+# integration and experimentation tests need docker (testcontainers)
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
-%{__python3} -m pytest tests
+PYTEST_PLUGINS=anyio.pytest_plugin,pytest_asyncio.plugin \
+%{__python3} -m pytest tests \
+	--ignore=tests/integration \
+	--ignore=tests/experimentation
 %endif
 
 %install
